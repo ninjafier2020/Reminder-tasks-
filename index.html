@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>جدولي الصوتي</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e9eff3;--panel:#fff;--ink:#10222e;--mute:#5d7280;--line:#d3dde4;--teal:#0e7c86;--amber:#f2a900;--red:#d64545}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Tajawal,Tahoma,sans-serif;line-height:1.6}
+main{max-width:640px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:2rem;font-weight:800;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 24px}
+.mic-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;margin:8px 0 20px}
+#mic{width:112px;height:112px;border-radius:50%;border:0;background:var(--amber);color:var(--ink);font:800 1.1rem Tajawal,sans-serif;cursor:pointer;position:relative}
+#mic:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--teal);outline-offset:3px}
+#mic.on{background:var(--red);color:#fff}
+#mic.on::after{content:"";position:absolute;inset:-10px;border-radius:50%;border:3px solid var(--red);animation:ring 1.2s ease-out infinite}
+@keyframes ring{from{transform:scale(.9);opacity:1}to{transform:scale(1.25);opacity:0}}
+@media (prefers-reduced-motion:reduce){#mic.on::after{animation:none}}
+#transcript{min-height:1.6em;color:var(--mute);text-align:center}
+#status{min-height:1.6em;font-weight:500;text-align:center}
+.row{display:flex;gap:8px;margin-bottom:12px}
+input[type=text]{flex:1;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font:inherit;background:var(--panel);color:var(--ink)}
+button.btn{padding:10px 16px;border:0;border-radius:10px;background:var(--teal);color:#fff;font:500 1rem Tajawal,sans-serif;cursor:pointer}
+button.ghost{background:transparent;color:var(--teal);border:1px solid var(--line)}
+.opts{display:flex;flex-wrap:wrap;gap:16px;align-items:center;color:var(--mute);font-size:.95rem;margin:16px 0}
+select{font:inherit;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+details{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:20px}
+summary{cursor:pointer;font-weight:500}
+details ul{margin:8px 0 0;padding-inline-start:20px;color:var(--mute)}
+ul#list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+#list li{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-inline-start:5px solid var(--teal);border-radius:10px;padding:10px 12px}
+#list li.late{border-inline-start-color:var(--red)}
+#list li.done{opacity:.55;border-inline-start-color:var(--line)}
+#list li.done .t{text-decoration:line-through}
+.info{flex:1;min-width:0}
+.t{font-weight:500;overflow-wrap:anywhere}
+.w{font-size:.85rem;color:var(--mute)}
+.late .w{color:var(--red)}
+.acts{display:flex;gap:6px}
+.acts button{padding:6px 10px;font-size:.85rem}
+.empty{color:var(--mute);text-align:center;padding:24px 0}
+#alarms{position:fixed;top:0;inset-inline:0;z-index:9;display:grid;gap:8px;padding:12px}
+.alarm{max-width:600px;margin:0 auto;width:100%;background:var(--ink);color:#fff;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.alarm b{flex:1;font-size:1.1rem}
+.alarm button{padding:8px 14px}
+</style>
+</head>
+<body>
+<div id="alarms" role="alert"></div>
+<main>
+  <h1>جدولي الصوتي</h1>
+  <p class="sub">قول المهمة والميعاد، وهفكّرك بيها.</p>
+
+  <div class="mic-wrap">
+    <button id="mic" aria-label="ابدأ التسجيل الصوتي">اضغط وقول</button>
+    <div id="transcript" aria-live="polite"></div>
+    <div id="status" aria-live="polite"></div>
+  </div>
+
+  <form class="row" id="f">
+    <input type="text" id="txt" placeholder="أو اكتب الأمر هنا" aria-label="اكتب الأمر">
+    <button class="btn" type="submit">نفّذ</button>
+  </form>
+
+  <div class="opts">
+    <label>ذكّرني قبل الميعاد بـ
+      <select id="lead"><option value="0">وقت الميعاد</option><option value="5">٥ دقايق</option><option value="10">١٠ دقايق</option><option value="30">٣٠ دقيقة</option></select>
+    </label>
+    <label><input type="checkbox" id="speak" checked> رد صوتي</label>
+  </div>
+
+  <details>
+    <summary>أمثلة على الأوامر</summary>
+    <ul>
+      <li>ضيف اجتماع الفريق بكره الساعة ٥ ونص مساء</li>
+      <li>ذكرني أذاكر بعد ربع ساعة</li>
+      <li>غيّر ميعاد الاجتماع إلى الساعة ٧ مساء</li>
+      <li>غيّر اسم المذاكرة إلى مراجعة الفيزياء</li>
+      <li>امسح مهمة الاجتماع</li>
+      <li>خلصت المذاكرة</li>
+      <li>اقرأ المهام</li>
+      <li>امسح كل المهام</li>
+    </ul>
+  </details>
+
+  <ul id="list"></ul>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const load = () => { try { return JSON.parse(localStorage.getItem('tasks') || '[]'); } catch (e) { return []; } };
+let tasks = load();
+const save = () => { try { localStorage.setItem('tasks', JSON.stringify(tasks)); } catch (e) {} render(); };
+
+/* ---------- تطبيع النص العربي (حرف بحرف عشان الأطوال تفضل ثابتة) ---------- */
+const P = s => ' ' + s.replace(/[\u064B-\u065F\u0670\u0640]/g, '') + ' ';
+const N = s => s.toLowerCase()
+  .replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
+  .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+  .replace(/[^\u0621-\u064Aa-z0-9:]/g, ' ');
+
+const NUM = {واحده:1,واحد:1,اتنين:2,اثنين:2,ثنتين:2,تلاته:3,ثلاثه:3,تلات:3,اربعه:4,اربع:4,خمسه:5,خمس:5,
+  سته:6,ست:6,سبعه:7,سبع:7,تمانيه:8,ثمانيه:8,تمان:8,تسعه:9,تسع:9,عشره:10,عشر:10,احداشر:11,حداشر:11,اتناشر:12,اثناعشر:12};
+const toNum = w => /^\d+$/.test(w) ? +w : NUM[w];
+
+/* ---------- فهم الوقت والتاريخ ---------- */
+function parseWhen(raw) {
+  const r = P(raw); let w = N(r); const now = new Date(); let date = null;
+  const eat = re => {
+    const m = re.exec(w);
+    if (m) w = w.slice(0, m.index) + ' '.repeat(m[0].length) + w.slice(m.index + m[0].length);
+    return m;
+  };
+  // بعد X دقيقة/ساعة
+  let m = eat(/ بعد (?:(\S+) )?(دقيقه|دقايق|دقائق|ساعتين|ساعه|ساعات)(?= )/);
+  if (m) {
+    let mins;
+    if (m[2] === 'ساعتين') mins = 120;
+    else if (m[1] === 'نص' || m[1] === 'نصف') mins = 30;
+    else if (m[1] === 'ربع') mins = 15;
+    else { const n = m[1] ? (toNum(m[1]) || 1) : 1; mins = /^ساع/.test(m[2]) ? n * 60 : n; }
+    return { date: new Date(now.getTime() + mins * 60000), w, r };
+  }
+  // اليوم
+  let off = null;
+  if (eat(/ بعد بكره(?= )/)) off = 2;
+  else if (eat(/ (?:بكره|بكرا|غدا)(?= )/)) off = 1;
+  else if (eat(/ (?:النهارده|انهارده|اليوم)(?= )/)) off = 0;
+  // صباحاً / مساءً
+  const pr = eat(/ (صباحا|صباح|الصبح|الفجر|مساء|مساءا|بالليل|ليلا|العصر|المغرب|العشاء|الظهر|ظهرا)(?= )/);
+  const pm = pr && !/صب|فجر/.test(pr[1]);
+  // الساعة X
+  const w0 = w;
+  let tm = eat(/ (?:الساعه|ساعه) (\d{1,2}:\d{2}|\d{1,2}|[^\s\d:]+)(?: (و ?نصف|و ?نص|و ?ربع|و ?ثلث|الا ربع|الا ثلث|و ?\d{1,2}))?(?= )(?: (?:دقيقه|دقايق)(?= ))?/);
+  if (tm && !/:/.test(tm[1]) && toNum(tm[1]) === undefined) { w = w0; tm = null; }
+
+  const base = new Date(now); base.setHours(0, 0, 0, 0);
+  let mi = 0;
+  const mk = (d, h) => { const x = new Date(base); x.setDate(x.getDate() + d); x.setHours(h, mi, 0, 0); return x; };
+
+  if (tm) {
+    const hm = tm[1].match(/^(\d{1,2}):(\d{2})$/);
+    let h;
+    if (hm) { h = +hm[1]; mi = +hm[2]; }
+    else {
+      h = toNum(tm[1]);
+      const f = (tm[2] || '').replace(/ /g, '');
+      if (/^ونص/.test(f)) mi = 30;
+      else if (f === 'وربع') mi = 15;
+      else if (f === 'وثلث') mi = 20;
+      else if (f === 'الاربع') { h = (h - 1) || 12; mi = 45; }
+      else if (f === 'الاثلث') { h = (h - 1) || 12; mi = 40; }
+      else if (/^و\d+/.test(f)) mi = +f.slice(1);
+    }
+    let hs;
+    if (h > 12 || h === 0) hs = [h];
+    else if (pr) hs = [pm ? (h < 12 ? h + 12 : 12) : (h === 12 ? 0 : h)];
+    else if (off !== null) hs = [(h === 12 || h <= 6) ? (h % 12) + 12 : h];
+    else hs = [h % 12, (h % 12) + 12];
+    if (off !== null) date = mk(off, hs[0]);
+    else date = [0, 1].flatMap(d => hs.map(hh => mk(d, hh))).find(c => c > now);
+  } else if (off !== null) {
+    date = mk(off, 9);
+  }
+  return { date, w, r };
+}
+
+/* ---------- تنظيف العنوان والبحث عن المهمة ---------- */
+const FILL = new Set(('ضيف اضف اضيف سجل اعمل ذكرني فكرني عايز عاوز اريد مهمه موعد ميعاد تذكير ان اني ب ليا لي جديده جديد ' +
+  'امسح احذف شيل الغي الغ مسح حذف عدل غير بدل اجل حرك خلصت خلص تم انجزت كملت اقرا اعرض اسم عنوان المهمه الموعد الميعاد').split(' '));
+const keep = (w, r) => w.split('').map((c, i) => c === ' ' ? ' ' : r[i]).join('');
+const clean = s => s.split(/\s+/).filter(t => t && !FILL.has(N(t))).join(' ');
+
+function find(raw) {
+  const p = parseWhen(raw);
+  const q = N(clean(keep(p.w, p.r))).trim();
+  if (!q) return null;
+  let best = null, bs = 0;
+  for (const t of tasks) {
+    const tt = N(t.title).trim();
+    let s = 0;
+    if (tt === q) s = 100;
+    else if (tt.includes(q) || q.includes(tt)) s = 50;
+    else s = q.split(/\s+/).filter(x => x.length > 1 && tt.includes(x)).length;
+    if (s > bs) { bs = s; best = t; }
+  }
+  return best;
+}
+
+/* ---------- الأوامر ---------- */
+const DEL = ['امسح', 'احذف', 'شيل', 'الغي', 'الغ', 'مسح', 'حذف'];
+const EDIT = ['عدل', 'غير', 'بدل', 'اجل', 'حرك'];
+const DONE = ['خلصت', 'خلص', 'تم', 'انجزت', 'كملت'];
+const READ = ['اقرا', 'اعرض', 'عرض', 'جدولي', 'ايه'];
+
+const fmt = d => d.toLocaleString('ar-EG', { weekday: 'long', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+
+function handle(raw) {
+  raw = raw.trim(); if (!raw) return;
+  const n = N(P(raw)).trim();
+  const head = n.split(/\s+/).slice(0, 2);
+  const is = l => head.some(x => l.includes(x));
+  let msg;
+  if (is(DEL)) {
+    if (/ (كل|الكل|جميع) /.test(' ' + n + ' ')) { const c = tasks.length; tasks = []; save(); msg = 'مسحت كل المهام (' + c + ')'; }
+    else { const t = find(raw); if (t) { tasks = tasks.filter(x => x !== t); save(); msg = 'مسحت: ' + t.title; } else msg = 'ملقيتش المهمة دي'; }
+  } else if (is(EDIT)) msg = edit(raw);
+  else if (is(DONE)) {
+    const t = find(raw);
+    if (t) { t.done = true; save(); msg = 'تمام، خلّصت: ' + t.title; } else msg = 'ملقيتش المهمة دي';
+  } else if (is(READ)) {
+    const up = tasks.filter(t => !t.done).sort((a, b) => (a.when ?? 9e15) - (b.when ?? 9e15));
+    msg = up.length ? 'عندك ' + up.length + ' مهام. ' + up.slice(0, 5).map(t => t.title + (t.when ? ' ' + fmt(new Date(t.when)) : '')).join('، ') : 'مفيش مهام جاية';
+  } else msg = add(raw);
+  say(msg);
+}
+
+function add(raw) {
+  const p = parseWhen(raw);
+  const title = clean(keep(p.w, p.r));
+  if (!title) return 'قولي اسم المهمة';
+  tasks.push({ id: Date.now(), title, when: p.date ? p.date.getTime() : null, done: false, fired: false });
+  save();
+  return p.date ? 'ضفت ' + title + ' ' + fmt(p.date) : 'ضفت ' + title + ' من غير ميعاد';
+}
+
+function edit(raw) {
+  const r = P(raw), w = N(r);
+  const rename = / (اسم|عنوان) /.test(w);
+  const sp = / (الي|علي) /.exec(w);
+  let left = raw, right = '';
+  if (sp) { left = r.slice(0, sp.index); right = r.slice(sp.index + sp[0].length); }
+  const t = find(left);
+  if (!t) return 'ملقيتش المهمة اللي عايز تعدلها';
+  if (rename) {
+    const nt = clean(right);
+    if (!nt) return 'قول الاسم الجديد بعد كلمة إلى';
+    t.title = nt; save(); return 'غيّرت الاسم إلى ' + nt;
+  }
+  const p = parseWhen(sp ? right : raw);
+  if (!p.date) return 'قولي الميعاد الجديد';
+  t.when = p.date.getTime(); t.fired = false; t.done = false; save();
+  return 'غيّرت ميعاد ' + t.title + ' إلى ' + fmt(p.date);
+}
+
+/* ---------- الصوت ---------- */
+function say(msg) {
+  $('#status').textContent = msg;
+  if (!$('#speak').checked || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(msg); u.lang = 'ar-EG';
+  speechSynthesis.speak(u);
+}
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec, listening = false, finalText = '';
+$('#mic').onclick = () => {
+  if (!SR) { say('المتصفح ده مش بيدعم الأوامر الصوتية. استخدم Chrome أو Edge، أو اكتب الأمر.'); return; }
+  if (listening) { rec.stop(); return; }
+  askNotif();
+  rec = new SR(); rec.lang = 'ar-EG'; rec.interimResults = true; rec.continuous = false;
+  rec.onstart = () => { listening = true; $('#mic').classList.add('on'); $('#mic').textContent = 'بسمعك…'; $('#transcript').textContent = ''; };
+  rec.onresult = e => {
+    let s = '';
+    for (const r of e.results) { s += r[0].transcript; if (r.isFinal) finalText = s; }
+    $('#transcript').textContent = s;
+  };
+  rec.onerror = e => { finalText = ''; say(e.error === 'not-allowed' ? 'اسمح للمتصفح باستخدام الميكروفون' : 'مسمعتش حاجة، حاول تاني'); };
+  rec.onend = () => {
+    listening = false; $('#mic').classList.remove('on'); $('#mic').textContent = 'اضغط وقول';
+    if (finalText) { const f = finalText; finalText = ''; handle(f); }
+  };
+  rec.start();
+};
+$('#f').onsubmit = e => { e.preventDefault(); const v = $('#txt').value; $('#txt').value = ''; $('#transcript').textContent = v; handle(v); askNotif(); };
+
+/* ---------- التذكير ---------- */
+function askNotif() { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); }
+
+function beep() {
+  try {
+    const a = new (window.AudioContext || window.webkitAudioContext)();
+    [0, .3, .6].forEach(o => {
+      const s = a.createOscillator(), g = a.createGain();
+      s.connect(g); g.connect(a.destination); s.frequency.value = 880; g.gain.value = .25;
+      s.start(a.currentTime + o); s.stop(a.currentTime + o + .18);
+    });
+  } catch (e) {}
+}
+
+function alarm(t) {
+  beep();
+  const text = 'تذكير: ' + t.title;
+  if ('Notification' in window && Notification.permission === 'granted') { try { new Notification('جدولي', { body: t.title }); } catch (e) {} }
+  if ($('#speak').checked && 'speechSynthesis' in window) { const u = new SpeechSynthesisUtterance(text); u.lang = 'ar-EG'; speechSynthesis.speak(u); }
+  const box = document.createElement('div'); box.className = 'alarm';
+  const b = document.createElement('b'); b.textContent = text;
+  const ok = document.createElement('button'); ok.className = 'btn'; ok.textContent = 'تم';
+  const sn = document.createElement('button'); sn.className = 'btn ghost'; sn.style.color = '#fff'; sn.textContent = 'أجّل ١٠ دقايق';
+  ok.onclick = () => { t.done = true; save(); box.remove(); };
+  sn.onclick = () => { t.when = Date.now() + 600000; t.fired = false; save(); box.remove(); };
+  box.append(b, ok, sn); $('#alarms').append(box);
+}
+
+function check() {
+  const now = Date.now(), lead = +$('#lead').value * 60000;
+  for (const t of tasks) {
+    if (!t.done && t.when && !t.fired && t.when - lead <= now) { t.fired = true; save(); alarm(t); }
+  }
+}
+setInterval(check, 10000);
+
+/* ---------- العرض ---------- */
+function render() {
+  const el = $('#list'); el.innerHTML = '';
+  const s = [...tasks].sort((a, b) => (a.done - b.done) || ((a.when ?? 9e15) - (b.when ?? 9e15)));
+  if (!s.length) { el.innerHTML = '<p class="empty">مفيش مهام لسه. اضغط على الميكروفون وقول مهمة.</p>'; return; }
+  for (const t of s) {
+    const li = document.createElement('li');
+    li.className = (t.done ? 'done ' : '') + (!t.done && t.when && t.when < Date.now() ? 'late' : '');
+    const info = document.createElement('div'); info.className = 'info';
+    const ti = document.createElement('div'); ti.className = 't'; ti.textContent = t.title;
+    const wh = document.createElement('div'); wh.className = 'w'; wh.textContent = t.when ? fmt(new Date(t.when)) : 'من غير ميعاد';
+    info.append(ti, wh);
+    const acts = document.createElement('div'); acts.className = 'acts';
+    const mkb = (label, fn) => { const b = document.createElement('button'); b.className = 'btn ghost'; b.textContent = label; b.onclick = fn; return b; };
+    acts.append(
+      mkb(t.done ? 'رجّعها' : 'تم', () => { t.done = !t.done; if (!t.done && t.when && t.when < Date.now()) t.fired = false; save(); }),
+      mkb('تعديل', () => {
+        const nt = prompt('اسم المهمة', t.title); if (nt === null) return;
+        t.title = nt.trim() || t.title;
+        const ts = prompt('الميعاد الجديد (مثال: بكره الساعة 5 مساء). سيبه فاضي لو مش هتغيره', '');
+        if (ts) { const p = parseWhen(ts); if (p.date) { t.when = p.date.getTime(); t.fired = false; } }
+        save();
+      }),
+      mkb('مسح', () => { tasks = tasks.filter(x => x !== t); save(); })
+    );
+    li.append(info, acts); el.append(li);
+  }
+}
+render(); check();
+</script>
+</body>
+</html>
