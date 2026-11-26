@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
-<head>
+<head <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f172a">
+>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>جدولي الصوتي</title>
@@ -631,5 +633,14 @@ render();
 initPrayers();
 check();
 </script>
-</body>
+</body <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js')
+        .then((reg) => console.log('Service Worker مسجل بنجاح:', reg.scope))
+        .catch((err) => console.log('فشل تسجيل Service Worker:', err));
+    });
+  }
+</script>
+>
 </html>
